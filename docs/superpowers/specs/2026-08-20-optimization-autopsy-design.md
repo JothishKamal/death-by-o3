@@ -248,7 +248,8 @@ PassInvocation {
   attr_hash_before, attr_hash_after
   bisect_index  int                   # -1 when not gated; reproducibility only
   wall_ns
-  blobs_before[], blobs_after[]       # CAS ids
+  blobs_after[]                       # CAS ids; N+1 snapshots, not 2N --
+                                      # a record's "before" is its predecessor's "after" (§5.2)
   metrics_before, metrics_after       # see 5.3
 }
 ```
