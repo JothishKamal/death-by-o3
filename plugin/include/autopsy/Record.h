@@ -51,6 +51,8 @@ struct Recorder {
   std::unique_ptr<llvm::raw_fd_ostream> Out;
   std::string CasDir;
   autopsy::VetoSpec Veto;
+  bool VetoApplied = false;
+  bool VetoRefused = false;
 };
 
 } // namespace autopsy

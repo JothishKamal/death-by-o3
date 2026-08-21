@@ -80,7 +80,21 @@ static void registerCallbacks(PassBuilder &PB) {
         unsigned Will = R.Occ[autopsy::occKey(PassClass, U)] + 1;
         if (!autopsy::matches(R.Veto, PassClass, U, Will))
           return true;
-        return false;   // guard verification lands in Task 2
+        uint64_t Got = autopsy::scopeHash(IR);
+        if (Got != R.Veto.guard) {
+          errs() << "VETO_REFUSED stale address: want="
+                 << format_hex(R.Veto.guard, 18)
+                 << " got=" << format_hex(Got, 18)
+                 << " pass=" << PassClass << " unit=" << U.kind << ":" << U.name
+                 << " occ=" << Will << "\n";
+          R.VetoRefused = true;
+          return true;   // refuse: never veto the wrong invocation
+        }
+        errs() << "VETO_APPLIED seq=" << (R.Seq + 1) << " pass=" << PassClass
+               << " unit=" << U.kind << ":" << U.name << " occ=" << Will
+               << " guard=" << format_hex(Got, 18) << "\n";
+        R.VetoApplied = true;
+        return false;
       });
 
   auto onBefore = [PIC](StringRef PassClass, Any IR, bool Skipped) {
