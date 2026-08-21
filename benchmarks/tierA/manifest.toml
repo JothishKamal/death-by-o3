@@ -1,0 +1,37 @@
+# Tier A: planted regressions with known culprits.
+# Verdicts are measured, interleaved, pinned. Negatives are recorded, not hidden.
+
+[[case]]
+id = "A12"
+source = "A12_simplifycfg_cmov.c"
+culprit_pass = "simplifycfg"
+config_flags = ["-O3"]
+disable_flags = ["-mllvm", "-two-entry-phi-node-folding-threshold=0",
+                 "-mllvm", "-phi-node-folding-threshold=0"]
+expected_ratio = 4.99
+verified = true
+note = "Flagship. simplifycfg emits NO optimization remarks, so this case is invisible to every remark-based tool."
+
+[[case]]
+id = "A04"
+source = "A04_slp_gather.c"
+culprit_pass = "slp-vectorizer"
+config_flags = ["-O3"]
+disable_flags = ["-fno-slp-vectorize"]
+expected_ratio = 1.29
+verified = true
+note = "Reproduces at baseline SSE2 only; neutral at -march=native."
+
+# Documented negatives from the submission's four named seeds.
+# Seeds (a), (c) and (d) do NOT reproduce as runtime regressions on Zen 3.
+[[negative]]
+seed = "fully unrolled low-trip-count loops"
+finding = "222 KiB .text vs 49 KiB, yet full unrolling is 1.07x FASTER. Code-size regression, not runtime."
+
+[[negative]]
+seed = "inlining into a hot loop inducing spills"
+finding = "Backwards: -O3 inlined = 0 spills, -fno-inline = 16. SysV has no callee-saved xmm registers."
+
+[[negative]]
+seed = "unswitching on a rarely-taken branch"
+finding = "1.11x FASTER. Transform fires (.text 1130 -> 2135) but removed branches were perfectly predicted."
