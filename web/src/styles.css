@@ -23,6 +23,8 @@ body { margin: 0; background: var(--bg); color: var(--fg);
                display: inline-block; }
 .delta-strip-fill { display: block; height: 100%; background: var(--accent); }
 .ir-diff { border: 1px solid #222; margin: 8px 0; max-height: 46vh; overflow: auto; }
+.no-diff { color: var(--dim); font-style: italic; border: 1px dashed #262b36;
+           padding: 12px; margin: 8px 0; }
 .no-remark { color: var(--warn); margin-left: auto; }
 .evidence-card { border: 1px solid #262b36; padding: 12px; margin-top: 12px; }
 .verdict { color: var(--good); }

@@ -3,6 +3,7 @@ import { EvidenceCard } from './components/EvidenceCard'
 import { IrDiff } from './components/IrDiff'
 import { Timeline } from './components/Timeline'
 import { fetchEvidence, fetchInvocation, fetchIr, fetchTree } from './lib/api'
+import { normaliseSsa } from './lib/normalise'
 import type { TreePayload } from './types'
 import './styles.css'
 
@@ -27,8 +28,10 @@ export default function App({ runId }: { runId: string }) {
     const seq = selected + 1   // seq is 1-based; the tree index is 0-based
     fetchInvocation(runId, seq).then(async (d) => {
       setDetail(d)
-      const before = d.ir.beforeRef ? await fetchIr(runId, d.ir.beforeRef) : ''
-      const after = d.ir.afterRef ? await fetchIr(runId, d.ir.afterRef) : ''
+      // Diff offsets are computed server-side against normalised IR; the docs
+      // must be normalised identically or CodeMirror overruns the document.
+      const before = d.ir.beforeRef ? normaliseSsa(await fetchIr(runId, d.ir.beforeRef)) : ''
+      const after = d.ir.afterRef ? normaliseSsa(await fetchIr(runId, d.ir.afterRef)) : ''
       setIr({ before, after })
     })
   }, [selected, runId, tree])
@@ -57,8 +60,16 @@ export default function App({ runId }: { runId: string }) {
                   <span className="no-remark">no optimization remark emitted</span>
                 )}
               </div>
-              <IrDiff before={ir.before} after={ir.after}
-                      changes={detail.diff?.changes ?? []} />
+              {detail.changed && ir.before && ir.after ? (
+                <IrDiff before={ir.before} after={ir.after}
+                        changes={detail.diff?.changes ?? []} />
+              ) : (
+                <p className="no-diff">
+                  {detail.changed
+                    ? 'IR snapshots unavailable for this unit.'
+                    : 'Scaffolding or no-op invocation: the IR did not change here.'}
+                </p>
+              )}
             </>
           )}
           {evidence && <EvidenceCard record={evidence} />}
