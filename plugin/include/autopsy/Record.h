@@ -5,6 +5,7 @@
 #define AUTOPSY_RECORD_H
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,7 @@ struct Record {
   uint64_t attr_hash_before = 0;
   uint64_t attr_hash_after = 0;
   uint64_t wall_ns = 0;
+  int bisect_index = -1;   // -1 for Required passes: not gated, not vetoable
   std::vector<std::string> blobs_after;
 };
 
@@ -36,6 +38,8 @@ struct Recorder {
   std::vector<Record> Stack;
   unsigned Seq = 0;
   bool SawShouldRun = false;
+  std::map<std::string, unsigned> Occ;
+  unsigned BisectCounter = 0;
 };
 
 } // namespace autopsy
