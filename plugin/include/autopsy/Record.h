@@ -35,6 +35,7 @@ struct Record {
 struct Recorder {
   std::vector<Record> Stack;
   unsigned Seq = 0;
+  bool SawShouldRun = false;
 };
 
 } // namespace autopsy
