@@ -52,6 +52,30 @@ inline bool matches(const VetoSpec &V, llvm::StringRef PassClass,
          V.occurrence == Occurrence;
 }
 
+/// Parse several addresses separated by ';'. Only the first can ever apply:
+/// once a veto fires the pipeline diverges and later guards legitimately fail.
+inline std::vector<VetoSpec> parseVetoList(const char *S) {
+  std::vector<VetoSpec> Out;
+  if (!S)
+    return Out;
+  std::string Cur;
+  for (const char *P = S;; ++P) {
+    if (*P == ';' || *P == '\0') {
+      if (!Cur.empty()) {
+        VetoSpec V = parseVeto(Cur.c_str());
+        if (V.armed)
+          Out.push_back(V);
+      }
+      Cur.clear();
+      if (*P == '\0')
+        break;
+    } else {
+      Cur += *P;
+    }
+  }
+  return Out;
+}
+
 } // namespace autopsy
 
 #endif // AUTOPSY_VETO_H
