@@ -1,6 +1,7 @@
 //===- Plugin.cpp - Optimization Autopsy capture plugin -------------------===//
 // Licensed under the Apache License v2.0 with LLVM Exceptions.
 //===----------------------------------------------------------------------===//
+#include "autopsy/UnitId.h"
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/Compiler.h"
@@ -15,6 +16,13 @@ static void registerCallbacks(PassBuilder &PB) {
     return;
   }
   errs() << "autopsy-plugin: registered\n";
+
+  PIC->registerBeforeNonSkippedPassCallback(
+      [](StringRef PassClass, Any IR) {
+        autopsy::UnitId U = autopsy::identify(IR);
+        errs() << "kind=" << U.kind << " name=" << U.name
+               << " func=" << U.func << " class=" << PassClass << "\n";
+      });
 }
 
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
