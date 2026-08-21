@@ -1,0 +1,42 @@
+:root { --bg: #0f1115; --fg: #d8dee9; --dim: #6b7280; --accent: #7aa2f7;
+        --warn: #e0af68; --bad: #f7768e; --good: #9ece6a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+       font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
+.app { display: flex; flex-direction: column; height: 100vh; }
+.app-header { display: flex; justify-content: space-between; align-items: center;
+              padding: 0 16px; height: 48px; border-bottom: 1px solid #222; }
+.app-body { display: flex; flex: 1; min-height: 0; }
+.app-timeline { width: 340px; border-right: 1px solid #222; overflow: auto; }
+.app-detail { flex: 1; overflow: auto; padding: 12px; min-width: 0; }
+.timeline-controls { display: flex; gap: 8px; padding: 8px; }
+.timeline-controls input[type=text], .timeline-controls input:not([type]) {
+  flex: 1; background: #171a21; border: 1px solid #262b36; color: var(--fg);
+  padding: 4px 6px; }
+.row { display: flex; align-items: center; gap: 6px; padding: 2px 6px;
+       cursor: pointer; white-space: nowrap; }
+.row:hover { background: #171a21; }
+.row-selected { background: #1f2430; }
+.row[data-scaffolding="true"] .row-pass { color: var(--dim); }
+.row-unit { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+.delta-strip { margin-left: auto; width: 56px; height: 8px; background: #1b1f27;
+               display: inline-block; }
+.delta-strip-fill { display: block; height: 100%; background: var(--accent); }
+.ir-diff { border: 1px solid #222; margin: 8px 0; max-height: 46vh; overflow: auto; }
+.no-remark { color: var(--warn); margin-left: auto; }
+.evidence-card { border: 1px solid #262b36; padding: 12px; margin-top: 12px; }
+.verdict { color: var(--good); }
+.verdict-no_culprit_found { color: var(--warn); }
+.reproduce { display: block; color: var(--accent); margin: 6px 0;
+             overflow-x: auto; white-space: pre; }
+.measurements { list-style: none; padding: 0; }
+.measurements li { display: flex; gap: 12px; padding: 3px 0; cursor: pointer; }
+.glyph-diamond { color: var(--good); }
+.glyph-point { color: var(--accent); }
+.measurement-note { color: var(--dim); }
+.causal-claim { color: var(--dim); font-style: italic; }
+.shift-zero-line { stroke: var(--dim); }
+.shift-ci, .shift-cap { stroke: var(--accent); stroke-width: 2; }
+.shift-point { fill: var(--accent); }
+.shift-label { fill: var(--fg); font-size: 11px; }
+.prov-node.lit { outline: 1px solid var(--accent); }

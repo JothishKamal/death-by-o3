@@ -29,6 +29,12 @@ def main(argv=None) -> int:
     dia.add_argument("--hot-function", default=None)
     dia.add_argument("--top", type=int, default=5)
 
+    srv = sub.add_parser("serve", help="capture, diagnose and serve the UI")
+    srv.add_argument("source", type=Path)
+    srv.add_argument("-o", "--out", type=Path, default=Path("autopsy-serve"))
+    srv.add_argument("--port", type=int, default=8000)
+    srv.add_argument("--top", type=int, default=3)
+
     args = parser.parse_args(argv)
 
     if args.command == "capture":
@@ -66,6 +72,14 @@ def main(argv=None) -> int:
             print(f"  #{s['rank']} {s['pass']} on {s['address']['func']} "
                   f"(score {s['score']['total']:.3f})")
         print(f"evidence: {d.evidence_path}")
+        return 0
+
+    if args.command == "serve":
+        import uvicorn
+        from .api.serve import build_server
+        app, run_id = build_server(args.source, args.out, top=args.top)
+        print(f"run {run_id} ready at http://127.0.0.1:{args.port}/api/run/{run_id}/tree")
+        uvicorn.run(app, host="127.0.0.1", port=args.port)
         return 0
     return 1
 
