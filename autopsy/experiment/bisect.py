@@ -45,3 +45,23 @@ def bisect_range_excluding(index: int, total: int) -> str:
     if index < total:
         parts.append(f"{index + 1}-{total}")
     return ",".join(parts)
+
+
+# Measured: with an ACTIVE range LLVM gates ~6 more trailing backend passes
+# than the --opt-bisect=-1 listing shows (they only consult the bisector when
+# it is enabled). A tail capped at the calibrated total would suppress them
+# too, so the reproducibility string uses an open-ended upper bound instead.
+UPPER_BOUND = 100_000
+
+
+def bisect_range_excluding_open(index: int, upper: int = UPPER_BOUND) -> str:
+    """Like bisect_range_excluding, but the tail extends to `upper`.
+
+    This is what the reproduce command emits: it suppresses exactly one pass
+    regardless of how many unlisted backend passes LLVM gates.
+    """
+    parts = []
+    if index > 1:
+        parts.append(f"1-{index - 1}")
+    parts.append(f"{index + 1}-{upper}")
+    return ",".join(parts)
