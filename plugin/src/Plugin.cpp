@@ -3,18 +3,48 @@
 //===----------------------------------------------------------------------===//
 #include "autopsy/Address.h"
 #include "autopsy/Hash.h"
+#include "autopsy/Json.h"
 #include "autopsy/Record.h"
 #include "autopsy/UnitId.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include <algorithm>
+#include <chrono>
 
 using namespace llvm;
 
 static autopsy::Recorder R;
+
+namespace {
+struct Flusher {
+  ~Flusher() {
+    if (!R.Out)
+      return;
+    // Records complete in pop (post) order; the contract is DFS pre-order,
+    // i.e. seq order with parent_seq < seq. Sort before writing.
+    std::sort(R.Done.begin(), R.Done.end(),
+              [](const autopsy::Record &A, const autopsy::Record &B) {
+                return A.seq < B.seq;
+              });
+    for (const auto &Rec : R.Done)
+      autopsy::writeRecord(*R.Out, Rec);
+    R.Out->flush();
+  }
+};
+Flusher TheFlusher;
+} // namespace
+
+static uint64_t nowNs() {
+  return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
 
 static void registerCallbacks(PassBuilder &PB) {
   auto *PIC = PB.getPassInstrumentationCallbacks();
@@ -22,7 +52,18 @@ static void registerCallbacks(PassBuilder &PB) {
     errs() << "autopsy-plugin: FATAL: no PassInstrumentationCallbacks\n";
     return;
   }
+
   errs() << "autopsy-plugin: registered\n";
+
+  if (const char *Path = getenv("AUTOPSY_OUT")) {
+    std::error_code EC;
+    R.Out = std::make_unique<raw_fd_ostream>(Path, EC, sys::fs::OF_Text);
+    if (EC) {
+      errs() << "autopsy-plugin: cannot open " << Path << ": " << EC.message()
+             << "\n";
+      R.Out.reset();
+    }
+  }
 
   PIC->registerShouldRunOptionalPassCallback(
       [](StringRef, Any) -> bool {
@@ -52,21 +93,11 @@ static void registerCallbacks(PassBuilder &PB) {
       Rec.hash_before = autopsy::scopeHash(IR);
       Rec.attr_hash_before = autopsy::attrHash(IR);
     }
+    Rec.wall_ns = nowNs();   // start stamp; converted to a duration below
     R.Stack.push_back(Rec);
   };
 
-  auto emit = [](const autopsy::Record &Rec) {
-    errs() << "REC seq=" << Rec.seq << " parent=" << Rec.parent_seq
-           << " depth=" << Rec.depth << " class=" << Rec.pass_class
-           << " pass=" << Rec.pass_name << " role=" << Rec.role
-           << " kind=" << Rec.kind << " name=" << Rec.unit_name
-           << " func=" << Rec.func << " status=" << Rec.status
-           << " required=" << (Rec.required ? 1 : 0)
-           << " occ=" << Rec.occurrence
-           << " bisect=" << Rec.bisect_index
-           << " guard=" << format_hex(Rec.hash_before, 18)
-           << " changed=" << (Rec.changed ? 1 : 0) << "\n";
-  };
+  auto finish = [](autopsy::Record Rec) { R.Done.push_back(std::move(Rec)); };
 
   PIC->registerBeforeNonSkippedPassCallback(
       [onBefore](StringRef C, Any IR) { onBefore(C, IR, false); });
@@ -74,9 +105,9 @@ static void registerCallbacks(PassBuilder &PB) {
       [onBefore](StringRef C, Any IR) { onBefore(C, IR, true); });
 
   PIC->registerAfterPassCallback(
-      [emit](StringRef, Any IR, const PreservedAnalyses &) {
+      [finish](StringRef, Any IR, const PreservedAnalyses &) {
         if (R.Stack.empty()) return;
-        autopsy::Record Rec = R.Stack.back();
+        autopsy::Record Rec = std::move(R.Stack.back());
         R.Stack.pop_back();
         if (Rec.status == "ran") {
           Rec.hash_after = autopsy::scopeHash(IR);
@@ -84,16 +115,18 @@ static void registerCallbacks(PassBuilder &PB) {
           Rec.changed = (Rec.hash_before != Rec.hash_after) ||
                         (Rec.attr_hash_before != Rec.attr_hash_after);
         }
-        emit(Rec);
+        Rec.wall_ns = nowNs() - Rec.wall_ns;
+        finish(std::move(Rec));
       });
 
   PIC->registerAfterPassInvalidatedCallback(
-      [emit](StringRef, const PreservedAnalyses &) {
+      [finish](StringRef, const PreservedAnalyses &) {
         if (R.Stack.empty()) return;
-        autopsy::Record Rec = R.Stack.back();
+        autopsy::Record Rec = std::move(R.Stack.back());
         R.Stack.pop_back();
         Rec.status = "invalidated";
-        emit(Rec);
+        Rec.wall_ns = nowNs() - Rec.wall_ns;
+        finish(std::move(Rec));
       });
 }
 

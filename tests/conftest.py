@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -41,5 +42,21 @@ def run_capture(autopsy_plugin, tmp_path):
         if env:
             full_env.update(env)
         return subprocess.run(cmd, capture_output=True, text=True, env=full_env)
+
+    return _run
+
+
+@pytest.fixture
+def capture_events(run_capture, tmp_path):
+    """Run a capture and return the parsed JSONL records."""
+
+    def _run(src, extra_flags=None, env=None):
+        out = tmp_path / "events.jsonl"
+        e = {"AUTOPSY_OUT": str(out)}
+        if env:
+            e.update(env)
+        result = run_capture(src, extra_flags=extra_flags, env=e)
+        assert result.returncode == 0, result.stderr
+        return [json.loads(l) for l in out.read_text().splitlines() if l.strip()]
 
     return _run
