@@ -2,6 +2,7 @@
 // Licensed under the Apache License v2.0 with LLVM Exceptions.
 //===----------------------------------------------------------------------===//
 #include "autopsy/Address.h"
+#include "autopsy/Cas.h"
 #include "autopsy/Hash.h"
 #include "autopsy/Json.h"
 #include "autopsy/Record.h"
@@ -65,6 +66,9 @@ static void registerCallbacks(PassBuilder &PB) {
     }
   }
 
+  if (const char *Dir = getenv("AUTOPSY_CAS"))
+    R.CasDir = Dir;
+
   PIC->registerShouldRunOptionalPassCallback(
       [](StringRef, Any) -> bool {
         R.SawShouldRun = true;
@@ -120,6 +124,19 @@ static void registerCallbacks(PassBuilder &PB) {
                         (Rec.attr_hash_before != Rec.attr_hash_after);
           if (const Function *F = autopsy::metricTarget(IR))
             Rec.metrics_after = autopsy::measure(*F);
+          if (Rec.changed && !R.CasDir.empty()) {
+            if (const Function *F = autopsy::metricTarget(IR)) {
+              Rec.blobs_after.push_back(autopsy::casStore(*F, R.CasDir));
+            } else if (const auto **M = any_cast<const Module *>(&IR)) {
+              for (const Function &Fn : **M)
+                if (!Fn.isDeclaration())
+                  Rec.blobs_after.push_back(autopsy::casStore(Fn, R.CasDir));
+            } else if (const auto **C = any_cast<const LazyCallGraph::SCC *>(&IR)) {
+              for (LazyCallGraph::Node &N : **C)
+                Rec.blobs_after.push_back(
+                    autopsy::casStore(N.getFunction(), R.CasDir));
+            }
+          }
         }
         Rec.wall_ns = nowNs() - Rec.wall_ns;
         finish(std::move(Rec));
