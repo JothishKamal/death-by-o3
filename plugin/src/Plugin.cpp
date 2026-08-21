@@ -68,33 +68,36 @@ static void registerCallbacks(PassBuilder &PB) {
 
   if (const char *Dir = getenv("AUTOPSY_CAS"))
     R.CasDir = Dir;
-  R.Veto = autopsy::parseVeto(getenv("AUTOPSY_VETO"));
+  R.Vetoes = autopsy::parseVetoList(getenv("AUTOPSY_VETO"));
 
   PIC->registerShouldRunOptionalPassCallback(
       [](StringRef PassClass, Any IR) -> bool {
         R.SawShouldRun = true;
         ++R.BisectCounter;
-        if (!R.Veto.armed)
+        if (R.Vetoes.empty())
           return true;
         autopsy::UnitId U = autopsy::identify(IR);
         unsigned Will = R.Occ[autopsy::occKey(PassClass, U)] + 1;
-        if (!autopsy::matches(R.Veto, PassClass, U, Will))
-          return true;
-        uint64_t Got = autopsy::scopeHash(IR);
-        if (Got != R.Veto.guard) {
-          errs() << "VETO_REFUSED stale address: want="
-                 << format_hex(R.Veto.guard, 18)
-                 << " got=" << format_hex(Got, 18)
-                 << " pass=" << PassClass << " unit=" << U.kind << ":" << U.name
-                 << " occ=" << Will << "\n";
-          R.VetoRefused = true;
-          return true;   // refuse: never veto the wrong invocation
+        for (const auto &V : R.Vetoes) {
+          if (!autopsy::matches(V, PassClass, U, Will))
+            continue;
+          uint64_t Got = autopsy::scopeHash(IR);
+          if (Got != V.guard) {
+            errs() << "VETO_REFUSED stale address: want="
+                   << format_hex(V.guard, 18)
+                   << " got=" << format_hex(Got, 18)
+                   << " pass=" << PassClass << " unit=" << U.kind << ":" << U.name
+                   << " occ=" << Will << "\n";
+            R.VetoRefused = true;
+            return true;   // refuse: never veto the wrong invocation
+          }
+          errs() << "VETO_APPLIED seq=" << (R.Seq + 1) << " pass=" << PassClass
+                 << " unit=" << U.kind << ":" << U.name << " occ=" << Will
+                 << " guard=" << format_hex(Got, 18) << "\n";
+          R.VetoApplied = true;
+          return false;
         }
-        errs() << "VETO_APPLIED seq=" << (R.Seq + 1) << " pass=" << PassClass
-               << " unit=" << U.kind << ":" << U.name << " occ=" << Will
-               << " guard=" << format_hex(Got, 18) << "\n";
-        R.VetoApplied = true;
-        return false;
+        return true;
       });
 
   auto onBefore = [PIC](StringRef PassClass, Any IR, bool Skipped) {

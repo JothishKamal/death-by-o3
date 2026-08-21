@@ -50,7 +50,7 @@ struct Recorder {
   unsigned BisectCounter = 0;
   std::unique_ptr<llvm::raw_fd_ostream> Out;
   std::string CasDir;
-  autopsy::VetoSpec Veto;
+  std::vector<autopsy::VetoSpec> Vetoes;
   bool VetoApplied = false;
   bool VetoRefused = false;
 };
