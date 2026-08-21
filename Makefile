@@ -8,6 +8,7 @@ NINJA := $(VENV)/bin/ninja
 bootstrap:
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -q -r requirements-dev.txt
+	$(VENV)/bin/pip install -q -e .
 
 build: bootstrap
 	$(CMAKE) -G Ninja -B build \
