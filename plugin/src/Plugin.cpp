@@ -92,6 +92,10 @@ static void registerCallbacks(PassBuilder &PB) {
     if (!Skipped) {
       Rec.hash_before = autopsy::scopeHash(IR);
       Rec.attr_hash_before = autopsy::attrHash(IR);
+      if (const Function *F = autopsy::metricTarget(IR)) {
+        Rec.metrics_before = autopsy::measure(*F);
+        Rec.has_metrics = true;
+      }
     }
     Rec.wall_ns = nowNs();   // start stamp; converted to a duration below
     R.Stack.push_back(Rec);
@@ -114,6 +118,8 @@ static void registerCallbacks(PassBuilder &PB) {
           Rec.attr_hash_after = autopsy::attrHash(IR);
           Rec.changed = (Rec.hash_before != Rec.hash_after) ||
                         (Rec.attr_hash_before != Rec.attr_hash_after);
+          if (const Function *F = autopsy::metricTarget(IR))
+            Rec.metrics_after = autopsy::measure(*F);
         }
         Rec.wall_ns = nowNs() - Rec.wall_ns;
         finish(std::move(Rec));

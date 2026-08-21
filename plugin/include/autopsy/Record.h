@@ -4,6 +4,7 @@
 #ifndef AUTOPSY_RECORD_H
 #define AUTOPSY_RECORD_H
 
+#include "autopsy/Metrics.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cstdint>
@@ -35,6 +36,8 @@ struct Record {
   uint64_t wall_ns = 0;
   int bisect_index = -1;   // -1 for Required passes: not gated, not vetoable
   std::vector<std::string> blobs_after;
+  FnMetrics metrics_before, metrics_after;
+  bool has_metrics = false;
 };
 
 struct Recorder {
