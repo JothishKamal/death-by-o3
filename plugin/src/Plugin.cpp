@@ -1,6 +1,7 @@
 //===- Plugin.cpp - Optimization Autopsy capture plugin -------------------===//
 // Licensed under the Apache License v2.0 with LLVM Exceptions.
 //===----------------------------------------------------------------------===//
+#include "autopsy/Address.h"
 #include "autopsy/Hash.h"
 #include "autopsy/Record.h"
 #include "autopsy/UnitId.h"
@@ -8,6 +9,7 @@
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
@@ -25,6 +27,7 @@ static void registerCallbacks(PassBuilder &PB) {
   PIC->registerShouldRunOptionalPassCallback(
       [](StringRef, Any) -> bool {
         R.SawShouldRun = true;
+        ++R.BisectCounter;
         return true;   // veto logic arrives in Plan 2
       });
 
@@ -39,6 +42,8 @@ static void registerCallbacks(PassBuilder &PB) {
     Rec.role = Rec.pass_name.empty() ? "scaffolding" : "transform";
     Rec.required = !R.SawShouldRun;
     R.SawShouldRun = false;
+    Rec.occurrence = ++R.Occ[autopsy::occKey(PassClass, U)];
+    Rec.bisect_index = Rec.required ? -1 : (int)R.BisectCounter;
     Rec.kind = U.kind;
     Rec.unit_name = U.name;
     Rec.func = U.func;
@@ -57,6 +62,9 @@ static void registerCallbacks(PassBuilder &PB) {
            << " kind=" << Rec.kind << " name=" << Rec.unit_name
            << " func=" << Rec.func << " status=" << Rec.status
            << " required=" << (Rec.required ? 1 : 0)
+           << " occ=" << Rec.occurrence
+           << " bisect=" << Rec.bisect_index
+           << " guard=" << format_hex(Rec.hash_before, 18)
            << " changed=" << (Rec.changed ? 1 : 0) << "\n";
   };
 
