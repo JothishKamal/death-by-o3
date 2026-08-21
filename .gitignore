@@ -11,3 +11,5 @@ autopsy-out/
 autopsy-diagnose/
 autopsy-serve/
 autopsy-veto/
+autopsy.egg-info/
+.claude/
