@@ -60,3 +60,18 @@ def capture_events(run_capture, tmp_path):
         return [json.loads(l) for l in out.read_text().splitlines() if l.strip()]
 
     return _run
+
+
+@pytest.fixture
+def capture_run(tmp_path):
+    """Capture into a fresh directory and return a Run."""
+    from autopsy.capture import capture
+
+    counter = {"n": 0}
+
+    def _run(src, env=None):
+        counter["n"] += 1
+        out = tmp_path / f"run{counter['n']}"
+        return capture(src, out, env_extra=env)
+
+    return _run
