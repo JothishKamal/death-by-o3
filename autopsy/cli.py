@@ -23,6 +23,12 @@ def main(argv=None) -> int:
     vet.add_argument("--occurrence", type=int, default=1)
     vet.add_argument("-o", "--out", type=Path, default=Path("autopsy-veto"))
 
+    dia = sub.add_parser("diagnose", help="rank and test the decisions behind a regression")
+    dia.add_argument("source", type=Path)
+    dia.add_argument("-o", "--out", type=Path, default=Path("autopsy-diagnose"))
+    dia.add_argument("--hot-function", default=None)
+    dia.add_argument("--top", type=int, default=5)
+
     args = parser.parse_args(argv)
 
     if args.command == "capture":
@@ -50,6 +56,17 @@ def main(argv=None) -> int:
               f"({exp.prefix.identical_records} identical records)")
         print(f"reproduce       {exp.reproduce_cmd}")
         return 0 if exp.usable else 1
+
+    if args.command == "diagnose":
+        from .diagnose import diagnose
+        d = diagnose(args.source, args.out, hot_function=args.hot_function,
+                     top=args.top)
+        print(f"verdict: {d.verdict}")
+        for s in d.suspects:
+            print(f"  #{s['rank']} {s['pass']} on {s['address']['func']} "
+                  f"(score {s['score']['total']:.3f})")
+        print(f"evidence: {d.evidence_path}")
+        return 0
     return 1
 
 
