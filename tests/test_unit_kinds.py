@@ -1,26 +1,29 @@
-import re
-
-KIND_RE = re.compile(r"\bkind=(\w+)\b")
+import json
 
 
-def test_all_four_ir_unit_kinds_resolve(run_capture, fixture_dir):
+def test_all_four_ir_unit_kinds_resolve(capture_events, fixture_dir):
     """gemm.c has a module, functions, a recursive SCC, and nested loops.
     All four must resolve, and nothing may be unresolved."""
-    result = run_capture(fixture_dir / "gemm.c")
-    assert result.returncode == 0, result.stderr
-    kinds = KIND_RE.findall(result.stderr)
-    assert set(kinds) >= {"module", "function", "scc", "loop"}, sorted(set(kinds))
+    recs = capture_events(fixture_dir / "gemm.c")
+    kinds = {r["kind"] for r in recs}
+    assert kinds >= {"module", "function", "scc", "loop"}, sorted(kinds)
     assert "unresolved" not in kinds
 
 
-def test_loop_names_are_real_not_placeholder(run_capture, fixture_dir):
+def test_loop_names_are_real_not_placeholder(capture_events, fixture_dir):
     """-fno-discard-value-names must be in effect: loops carry real names."""
-    result = run_capture(fixture_dir / "gemm.c")
-    assert "<unnamed loop>" not in result.stderr
+    recs = capture_events(fixture_dir / "gemm.c")
+    assert "<unnamed loop>" not in {r["unit_name"] for r in recs}
 
 
-def test_loops_collapse_without_value_names(run_capture, fixture_dir):
+def test_loops_collapse_without_value_names(capture_events, run_capture,
+                                            fixture_dir, tmp_path):
     """Regression guard for spec C3: prove the flag is load-bearing."""
+    out = tmp_path / "discard.jsonl"
     result = run_capture(fixture_dir / "gemm.c",
-                         extra_flags=["-fdiscard-value-names"])
-    assert "<unnamed loop>" in result.stderr
+                         extra_flags=["-fdiscard-value-names"],
+                         env={"AUTOPSY_OUT": str(out)})
+    assert result.returncode == 0
+    names = {r["unit_name"] for r in
+             (json.loads(l) for l in out.read_text().splitlines() if l.strip())}
+    assert "<unnamed loop>" in names

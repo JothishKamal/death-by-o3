@@ -4,8 +4,11 @@
 #ifndef AUTOPSY_RECORD_H
 #define AUTOPSY_RECORD_H
 
+#include "llvm/Support/raw_ostream.h"
+
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -36,10 +39,13 @@ struct Record {
 
 struct Recorder {
   std::vector<Record> Stack;
+  std::vector<Record> Done;   // completed records, flushed seq-sorted at exit
   unsigned Seq = 0;
   bool SawShouldRun = false;
   std::map<std::string, unsigned> Occ;
   unsigned BisectCounter = 0;
+  std::unique_ptr<llvm::raw_fd_ostream> Out;
+  std::string CasDir;
 };
 
 } // namespace autopsy
