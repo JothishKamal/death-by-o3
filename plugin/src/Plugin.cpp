@@ -1,6 +1,7 @@
 //===- Plugin.cpp - Optimization Autopsy capture plugin -------------------===//
 // Licensed under the Apache License v2.0 with LLVM Exceptions.
 //===----------------------------------------------------------------------===//
+#include "autopsy/Hash.h"
 #include "autopsy/Record.h"
 #include "autopsy/UnitId.h"
 #include "llvm/IR/PassManager.h"
@@ -42,6 +43,10 @@ static void registerCallbacks(PassBuilder &PB) {
     Rec.unit_name = U.name;
     Rec.func = U.func;
     Rec.status = Skipped ? "skipped" : "ran";
+    if (!Skipped) {
+      Rec.hash_before = autopsy::scopeHash(IR);
+      Rec.attr_hash_before = autopsy::attrHash(IR);
+    }
     R.Stack.push_back(Rec);
   };
 
@@ -51,7 +56,8 @@ static void registerCallbacks(PassBuilder &PB) {
            << " pass=" << Rec.pass_name << " role=" << Rec.role
            << " kind=" << Rec.kind << " name=" << Rec.unit_name
            << " func=" << Rec.func << " status=" << Rec.status
-           << " required=" << (Rec.required ? 1 : 0) << "\n";
+           << " required=" << (Rec.required ? 1 : 0)
+           << " changed=" << (Rec.changed ? 1 : 0) << "\n";
   };
 
   PIC->registerBeforeNonSkippedPassCallback(
@@ -60,10 +66,16 @@ static void registerCallbacks(PassBuilder &PB) {
       [onBefore](StringRef C, Any IR) { onBefore(C, IR, true); });
 
   PIC->registerAfterPassCallback(
-      [emit](StringRef, Any, const PreservedAnalyses &) {
+      [emit](StringRef, Any IR, const PreservedAnalyses &) {
         if (R.Stack.empty()) return;
         autopsy::Record Rec = R.Stack.back();
         R.Stack.pop_back();
+        if (Rec.status == "ran") {
+          Rec.hash_after = autopsy::scopeHash(IR);
+          Rec.attr_hash_after = autopsy::attrHash(IR);
+          Rec.changed = (Rec.hash_before != Rec.hash_after) ||
+                        (Rec.attr_hash_before != Rec.attr_hash_after);
+        }
         emit(Rec);
       });
 
