@@ -40,6 +40,23 @@ inline std::string hex64(uint64_t V) {
   return buf;
 }
 
+inline void writeMetrics(llvm::raw_ostream &OS, const FnMetrics &M) {
+  OS << "{\"instructions\":" << M.instructions
+     << ",\"blocks\":" << M.blocks
+     << ",\"loops\":" << M.loops
+     << ",\"max_loop_depth\":" << M.max_loop_depth
+     << ",\"calls\":" << M.calls
+     << ",\"allocas\":" << M.allocas
+     << ",\"vector_insts\":" << M.vector_insts
+     << ",\"ir_bytes\":" << M.ir_bytes
+     << ",\"by_class\":{"
+     << "\"mem\":" << M.c_mem << ",\"arith\":" << M.c_arith
+     << ",\"float\":" << M.c_float << ",\"vector\":" << M.c_vector
+     << ",\"control\":" << M.c_control << ",\"call\":" << M.c_call
+     << ",\"cast\":" << M.c_cast << ",\"phi\":" << M.c_phi
+     << ",\"other\":" << M.c_other << "}}";
+}
+
 inline void writeRecord(llvm::raw_ostream &OS, const Record &R) {
   OS << "{"
      << "\"seq\":" << R.seq
@@ -61,8 +78,18 @@ inline void writeRecord(llvm::raw_ostream &OS, const Record &R) {
      << ",\"attr_hash_after\":\"" << hex64(R.attr_hash_after) << "\""
      << ",\"guard\":\"" << hex64(R.hash_before) << "\""
      << ",\"bisect_index\":" << R.bisect_index
-     << ",\"wall_ns\":" << R.wall_ns
-     << "}\n";
+     << ",\"wall_ns\":" << R.wall_ns;
+  OS << ",\"blobs_after\":[";
+  for (size_t i = 0; i < R.blobs_after.size(); ++i) {
+    if (i) OS << ",";
+    OS << "\"" << R.blobs_after[i] << "\"";
+  }
+  OS << "]";
+  if (R.has_metrics) {
+    OS << ",\"metrics_before\":"; writeMetrics(OS, R.metrics_before);
+    OS << ",\"metrics_after\":";  writeMetrics(OS, R.metrics_after);
+  }
+  OS << "}\n";
 }
 
 } // namespace autopsy

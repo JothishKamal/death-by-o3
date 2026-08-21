@@ -4,12 +4,15 @@ FIELDS = {
     "seq", "parent_seq", "depth", "pass_class", "pass_name", "role", "kind",
     "unit_name", "func", "occurrence", "required", "status", "changed",
     "hash_before", "hash_after", "attr_hash_before", "attr_hash_after",
-    "guard", "bisect_index", "wall_ns",
+    "guard", "bisect_index", "wall_ns", "blobs_after",
 }
 
 
 def load(path):
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+OPTIONAL = {"metrics_before", "metrics_after"}
 
 
 def test_jsonl_is_written_and_parses(run_capture, fixture_dir, tmp_path):
@@ -24,7 +27,7 @@ def test_every_record_has_the_full_field_set(run_capture, fixture_dir, tmp_path)
     out = tmp_path / "events.jsonl"
     run_capture(fixture_dir / "gemm.c", env={"AUTOPSY_OUT": str(out)})
     for r in load(out):
-        assert set(r) == FIELDS, f"field mismatch: {set(r) ^ FIELDS}"
+        assert set(r) - OPTIONAL == FIELDS, f"field mismatch: {set(r) ^ FIELDS}"
 
 
 def test_records_are_in_dfs_preorder(run_capture, fixture_dir, tmp_path):
