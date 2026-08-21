@@ -21,13 +21,23 @@ static void registerCallbacks(PassBuilder &PB) {
   }
   errs() << "autopsy-plugin: registered\n";
 
-  auto onBefore = [](StringRef PassClass, Any IR, bool Skipped) {
+  PIC->registerShouldRunOptionalPassCallback(
+      [](StringRef, Any) -> bool {
+        R.SawShouldRun = true;
+        return true;   // veto logic arrives in Plan 2
+      });
+
+  auto onBefore = [PIC](StringRef PassClass, Any IR, bool Skipped) {
     autopsy::UnitId U = autopsy::identify(IR);
     autopsy::Record Rec;
     Rec.seq = ++R.Seq;
     Rec.parent_seq = R.Stack.empty() ? -1 : (int)R.Stack.back().seq;
     Rec.depth = (unsigned)R.Stack.size();
     Rec.pass_class = PassClass.str();
+    Rec.pass_name = PIC->getPassNameForClassName(PassClass).str();
+    Rec.role = Rec.pass_name.empty() ? "scaffolding" : "transform";
+    Rec.required = !R.SawShouldRun;
+    R.SawShouldRun = false;
     Rec.kind = U.kind;
     Rec.unit_name = U.name;
     Rec.func = U.func;
@@ -38,8 +48,10 @@ static void registerCallbacks(PassBuilder &PB) {
   auto emit = [](const autopsy::Record &Rec) {
     errs() << "REC seq=" << Rec.seq << " parent=" << Rec.parent_seq
            << " depth=" << Rec.depth << " class=" << Rec.pass_class
+           << " pass=" << Rec.pass_name << " role=" << Rec.role
            << " kind=" << Rec.kind << " name=" << Rec.unit_name
-           << " func=" << Rec.func << " status=" << Rec.status << "\n";
+           << " func=" << Rec.func << " status=" << Rec.status
+           << " required=" << (Rec.required ? 1 : 0) << "\n";
   };
 
   PIC->registerBeforeNonSkippedPassCallback(
