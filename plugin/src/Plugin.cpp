@@ -68,12 +68,19 @@ static void registerCallbacks(PassBuilder &PB) {
 
   if (const char *Dir = getenv("AUTOPSY_CAS"))
     R.CasDir = Dir;
+  R.Veto = autopsy::parseVeto(getenv("AUTOPSY_VETO"));
 
   PIC->registerShouldRunOptionalPassCallback(
-      [](StringRef, Any) -> bool {
+      [](StringRef PassClass, Any IR) -> bool {
         R.SawShouldRun = true;
         ++R.BisectCounter;
-        return true;   // veto logic arrives in Plan 2
+        if (!R.Veto.armed)
+          return true;
+        autopsy::UnitId U = autopsy::identify(IR);
+        unsigned Will = R.Occ[autopsy::occKey(PassClass, U)] + 1;
+        if (!autopsy::matches(R.Veto, PassClass, U, Will))
+          return true;
+        return false;   // guard verification lands in Task 2
       });
 
   auto onBefore = [PIC](StringRef PassClass, Any IR, bool Skipped) {
@@ -100,9 +107,16 @@ static void registerCallbacks(PassBuilder &PB) {
         Rec.metrics_before = autopsy::measure(*F);
         Rec.has_metrics = true;
       }
+      Rec.wall_ns = nowNs();   // start stamp; converted to a duration below
+      R.Stack.push_back(Rec);
+    } else {
+      // A skipped pass gets NO After callback from the PM, so it must not be
+      // pushed -- it would never pop and corrupt every later parent_seq.
+      // It has no children either, so emit it straight away. Seq was already
+      // allocated above, keeping numbering aligned with the baseline run.
+      Rec.wall_ns = 0;
+      R.Done.push_back(std::move(Rec));
     }
-    Rec.wall_ns = nowNs();   // start stamp; converted to a duration below
-    R.Stack.push_back(Rec);
   };
 
   auto finish = [](autopsy::Record Rec) { R.Done.push_back(std::move(Rec)); };

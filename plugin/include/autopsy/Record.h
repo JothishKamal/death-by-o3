@@ -5,6 +5,7 @@
 #define AUTOPSY_RECORD_H
 
 #include "autopsy/Metrics.h"
+#include "autopsy/Veto.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cstdint>
@@ -49,6 +50,7 @@ struct Recorder {
   unsigned BisectCounter = 0;
   std::unique_ptr<llvm::raw_fd_ostream> Out;
   std::string CasDir;
+  autopsy::VetoSpec Veto;
 };
 
 } // namespace autopsy
