@@ -5,7 +5,8 @@ import pytest
 from autopsy.measure.toolchain import Toolchain, find_toolchain
 
 
-def test_finds_tools_on_path_when_no_prefix():
+def test_finds_tools_on_path_when_no_prefix(monkeypatch):
+    monkeypatch.delenv("AUTOPSY_TOOL_PREFIX", raising=False)
     tc = find_toolchain(prefix=None)
     assert isinstance(tc, Toolchain)
     assert tc.has_valgrind == (shutil.which("valgrind") is not None)
