@@ -16,21 +16,41 @@ optimization remark**, so it is invisible to every remark-based tool.
 CHECK 8126464 — byte-identical across both builds
 ```
 
+## Watch on GitHub
+
+**Web UI walkthrough**
+
+https://github.com/user-attachments/assets/9f5eab41-c17a-4f50-81d3-2b960716452f
+
+**CLI walkthrough**
+
+https://github.com/user-attachments/assets/ca6a0f97-e117-4626-9b4a-d60094a66c3a
+
+![Optimization Autopsy evidence view](https://github.com/user-attachments/assets/fbd9721f-d1a5-4d53-9cee-b5d2eab87a7c)
+
 ## Files
 
+- **`demo-ui.mp4`** — screen recording of the web UI walkthrough (spec §12
+  beats): full tree → changed-only filter → the culprit invocation's
+  before/after IR diff → evidence card with provenance tracing.
+  Regenerate: `.venv/bin/autopsy serve …` + `web: npm run dev`, record with
+  any screen recorder.
+- **`terminal.mp4`** — the CLI loop as a video (rendered from the asciinema
+  cast): measure the regression, capture 513 invocations / 56 decisions,
+  diagnose (`#1 loop-unroll on chain`), guard-verified veto with the stock
+  clang reproduce command.
+- `terminal.cast` — asciinema recording of the same CLI session
+  (`asciinema play demo/terminal.cast`). Regenerate with
+  `.venv/bin/python scripts/record-demo-cast.py`.
 - `demo.script.md` — the beat-by-beat demo script (spec §12)
-- `terminal.cast` — asciinema recording of the CLI loop:
-  capture → diagnose → veto, with guard verification and prefix proof
-- `screenshots/` — the web UI: timeline + evidence card (`ui-full.png`),
-  the before/after IR diff of the culprit invocation (`ui-diff.png`),
-  and scaffolding-node handling (`ui-scaffolding.png`)
+- `screenshots/` — stills of the web UI
 
 ## Reproduce everything from scratch
 
 ```bash
 make bootstrap && make build          # plugin + venv
-make test                             # 157 pytest tests
-cd web && npm i && npx vitest run     # 31 vitest tests
+make test                             # pytest suite
+cd web && npm i && npx vitest run     # vitest suite
 npx vite build                        # ~228 KB gzip
 
 # CLI loop
@@ -44,4 +64,4 @@ npx vite build                        # ~228 KB gzip
 cd web && npm run dev                                             # :5173/?run=<id>
 ```
 
-Play the cast in a terminal: `asciinema play demo/terminal.cast`
+See the repository README for prerequisites and full usage.

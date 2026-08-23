@@ -13,3 +13,4 @@ autopsy-serve/
 autopsy-veto/
 autopsy.egg-info/
 .claude/
+demo/_terminal_player.html
