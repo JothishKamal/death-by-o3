@@ -1,0 +1,16 @@
+.venv/
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+inproc/
+node_modules/
+web/dist/
+.tools/
+autopsy-out/
+autopsy-diagnose/
+autopsy-serve/
+autopsy-veto/
+autopsy.egg-info/
+.claude/
+demo/_terminal_player.html
